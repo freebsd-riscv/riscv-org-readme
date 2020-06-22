@@ -19,6 +19,9 @@ fetch https://artifact.ci.freebsd.org/snapshot/head/latest/riscv/riscv64/disk-te
 zstd -d disk-test.img.zst -o riscv.img
 fetch https://artifact.ci.freebsd.org/snapshot/head/latest/riscv/riscv64/kernel.txz 
 tar Jxvf kernel.txz --strip-components 3 boot/kernel/kernel
+# FreeBSD >= 13
+sudo kldload if_tuntap
+# Else
 sudo kldload if_tun if_tap
 sudo qemu-system-riscv64 -machine virt -m 2048M -smp 2 -nographic -kernel $HOME/riscv/kernel -bios /usr/local/share/opensbi/lp64/generic/firmware/fw_jump.elf -drive file=$HOME/riscv/riscv.img,format=raw,id=hd0 -device virtio-blk-device,drive=hd0 -netdev tap,ifname=tap0,script=no,id=net0 -device virtio-net-device,netdev=net0
 # login as root without password
