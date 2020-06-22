@@ -3,18 +3,25 @@ This is a port of [FreeBSD Operating System](http://www.freebsd.org) to RISC-V i
 
 [![Build Status](https://ci.freebsd.org/buildStatus/icon?job=FreeBSD-head-riscv64-build)](https://ci.freebsd.org/job/FreeBSD-head-riscv64-build/)
 
-### Prepare your environment
-On FreeBSD 11.0 machine install the required packages:
-```
-$ sudo pkg install riscv64-xtoolchain-gcc riscv-isa-sim
-```
 
 ## Quick way
 
 ### You can use pre-built images, otherwise proceed to next step.
 ```
-fetch https://artifact.ci.freebsd.org/snapshot/head/latest/riscv/riscv64/bbl.xz
-unxz bbl.xz
+mkdir $HOME/riscv
+cd $HOME/riscv
+# Install pre-built [OpenSBI](https://github.com/riscv/opensbi/) bootloaders
+sudo pkg install opensbi
+# Install zstd utility to decompress FreeBSD riscv image
+sudo pkg install zstd
+# Download FreeBSD riscv Snapshot
+fetch https://artifact.ci.freebsd.org/snapshot/head/latest/riscv/riscv64/disk-test.img.zst
+zstd -d disk-test.img.zst -o riscv.img
+fetch https://artifact.ci.freebsd.org/snapshot/head/latest/riscv/riscv64/kernel.txz 
+tar Jxvf kernel.txz --strip-components 3 boot/kernel/kernel
+sudo kldload if_tuntap
+sudo qemu-system-riscv64 -machine virt -m 2048M -smp 2 -nographic -kernel $HOME/riscv/kernel -bios /usr/local/share/opensbi/lp64/generic/firmware/fw_jump.elf -drive file=$HOME/riscv/riscv.img,format=raw,id=hd0 -device virtio-blk-device,drive=hd0 -netdev tap,ifname=tap0,script=no,id=net0 -device virtio-net-device,netdev=net0
+# login as root without password
 ```
 
 ## Complete build from scratch
@@ -23,6 +30,12 @@ Set the following environment variables:
 $ setenv MAKEOBJDIRPREFIX /home/${USER}/obj/
 $ setenv WITHOUT_FORMAT_EXTENSIONS yes
 $ setenv DESTDIR /home/${USER}/riscv-world
+```
+
+### Prepare your environment
+On FreeBSD 11.0 machine install the required packages:
+```
+$ sudo pkg install riscv64-xtoolchain-gcc riscv-isa-sim
 ```
 
 ### Build FreeBSD world
