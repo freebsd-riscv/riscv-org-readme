@@ -7,91 +7,129 @@ This is a port of [FreeBSD Operating System](http://www.freebsd.org) to RISC-V i
 ## Quick way
 
 ### You can use pre-built images, otherwise proceed to next step.
+
+#### Setup your path
+
 ```
 mkdir $HOME/riscv
 cd $HOME/riscv
-# Install pre-built [OpenSBI](https://github.com/riscv/opensbi/) bootloaders
+```
+
+#### Install pre-built [OpenSBI](https://github.com/riscv/opensbi/) bootloaders
+
+```
 sudo pkg install opensbi
-# Install zstd utility to decompress FreeBSD riscv image
+````
+
+#### Install zstd utility to decompress FreeBSD riscv image
+
+```
 sudo pkg install zstd
-# Download FreeBSD riscv Snapshot
+```
+
+#### Download FreeBSD riscv Snapshot and kernel
+
+```
 fetch https://artifact.ci.freebsd.org/snapshot/head/latest/riscv/riscv64/disk-test.img.zst
 zstd -d disk-test.img.zst -o riscv.img
 fetch https://artifact.ci.freebsd.org/snapshot/head/latest/riscv/riscv64/kernel.txz 
 tar Jxvf kernel.txz --strip-components 3 boot/kernel/kernel
-# FreeBSD >= 13
+```
+
+#### Configure tap(4) 
+
+Load (tun)tap module(s) if not already loaded
+
+If FreeBSD >= 13:
+
+```
 sudo kldload if_tuntap
-# Else
+```
+
+Else:
+
+```
 sudo kldload if_tun if_tap
+```
+
+Configure the network with tap(4):
+
+```
+ifconfig tap0 create up
+ifconfig bridge0 create up
+ifconfig bridge0 addm em0 addm tap0 # em0 might depends of your ethernet devices
+```
+
+#### Run FreeBSD RiscV in QEMU
+
+```
 sudo qemu-system-riscv64 -machine virt -m 2048M -smp 2 -nographic -kernel $HOME/riscv/kernel -bios /usr/local/share/opensbi/lp64/generic/firmware/fw_jump.elf -drive file=$HOME/riscv/riscv.img,format=raw,id=hd0 -device virtio-blk-device,drive=hd0 -netdev tap,ifname=tap0,script=no,id=net0 -device virtio-net-device,netdev=net0
 # login as root without password
 ```
 
 ## Complete build from scratch
 Set the following environment variables:
+
+with (t)csh shell:
+
 ```
-$ setenv MAKEOBJDIRPREFIX /home/${USER}/obj/
-$ setenv WITHOUT_FORMAT_EXTENSIONS yes
-$ setenv DESTDIR /home/${USER}/riscv-world
+setenv MAKEOBJDIRPREFIX ${HOME}/riscv/obj/
+setenv WITHOUT_FORMAT_EXTENSIONS yes
+setenv DESTDIR ${HOME}/riscv/riscv-world
 ```
 
-### Prepare your environment
-On FreeBSD 11.0 machine install the required packages:
+with bash/zsh/etc. shell:
+
 ```
-$ sudo pkg install riscv64-xtoolchain-gcc riscv-isa-sim
+export MAKEOBJDIRPREFIX=${HOME}/riscv/obj/
+export WITHOUT_FORMAT_EXTENSIONS=yes
+export DESTDIR=${HOME}/riscv/riscv-world
 ```
 
-### Build FreeBSD world
+### Build FreeBSD RiscV64
+
+Get source from svn:
 ```
-$ svnlite co http://svn.freebsd.org/base/head freebsd-riscv
-$ cd freebsd-riscv
-$ make -j4 CROSS_TOOLCHAIN=riscv64-gcc TARGET_ARCH=riscv64 buildworld
+svnlite co http://svn.freebsd.org/base/head ${HOME}/riscv/freebsd-riscv
 ```
 
-### Build 32mb rootfs image
+Build FreeBSD RiscV64
 ```
-$ cd freebsd-riscv
-$ make TARGET_ARCH=riscv64 -DNO_ROOT -DWITHOUT_TESTS DESTDIR=$DESTDIR installworld
-$ make TARGET_ARCH=riscv64 -DNO_ROOT -DWITHOUT_TESTS DESTDIR=$DESTDIR distribution
-$ fetch https://raw.githubusercontent.com/bukinr/riscv-tools/master/image/basic.files
-$ tools/tools/makeroot/makeroot.sh -s 32m -f basic.files riscv.img $DESTDIR
+cd ${HOME}/riscv/freebsd-riscv
+make -j4 TARGET_ARCH=riscv64 buildworld
+make -j4 TARGET_ARCH=riscv64 buildkernel
 ```
 
-### Prepare your kernel config
-Modify sys/riscv/conf/GENERIC. Uncomment the following lines and specify the path to your riscv.img:
+Install FreeBSD RiscV64 into $DESTDIR
 ```
-options 	MD_ROOT
-options 	MD_ROOT_SIZE=32768	# 32MB ram disk
-makeoptions	MFS_IMAGE=/path/to/riscv.img
-options 	ROOTDEVNAME=\"ufs:/dev/md0\"
+make TARGET_ARCH=riscv64 -DNO_ROOT -DWITHOUT_TESTS DESTDIR=$DESTDIR installworld
+make TARGET_ARCH=riscv64 -DNO_ROOT -DWITHOUT_TESTS DESTDIR=$DESTDIR distribution 
+make TARGET_ARCH=riscv64 -DNO_ROOT -DWITHOUT_TESTS DESTDIR=$DESTDIR installkernel
 ```
 
-### Build FreeBSD kernel
+### Create the disk image
 ```
-$ cd freebsd-riscv
-$ make -j4 CROSS_TOOLCHAIN=riscv64-gcc TARGET_ARCH=riscv64 buildkernel
-```
-
-### Build BBL
-```
-$ git clone https://github.com/freebsd-riscv/riscv-pk
-$ cd riscv-pk
-$ mkdir build && cd build
-$ setenv OBJCOPY riscv64-freebsd-objcopy
-$ setenv READELF riscv64-freebsd-readelf
-$ setenv RANLIB riscv64-freebsd-ranlib
-$ setenv CFLAGS "-nostdlib"
-$ ../configure --host=riscv64-unknown-freebsd11.0 --with-payload=path_to_freebsd_kernel
-$ gmake bbl
-$ unsetenv OBJCOPY
-$ unsetenv READELF
-$ unsetenv RANLIB
-$ unsetenv CFLAGS
+cd $DESTDIR
+sed -E 's/time=[0-9\.]+$//' METALOG > METALOG.new
+mv METALOG.new METALOG
+echo 'hostname="qemu"' > etc/rc.conf
+echo "/dev/vtbd0        /       ufs     rw      1       1" > etc/fstab
+echo "./etc/fstab type=file uname=root gname=wheel mode=0644" >> METALOG
+echo "./etc/rc.conf type=file uname=root gname=wheel mode=0644" >> METALOG
+makefs -D -f 1000000 -o version=2 -s 10g $HOME/riscv/riscv.img METALOG
 ```
 
-### Run Spike simulator
+### Install pre-built [OpenSBI](https://github.com/riscv/opensbi/) bootloaders
+
 ```
-$ spike /path/to/bbl
+sudo pkg install opensbi
+````
+
+### Run FreeBSD RiscV in QEMU
+
+```
+sudo qemu-system-riscv64 -machine virt -m 2048M -smp 2 -nographic -kernel $HOME/riscv/kernel -bios /usr/local/share/opensbi/lp64/generic/firmware/fw_jump.elf -drive file=$HOME/riscv/riscv.img,format=raw,id=hd0 -device virtio-blk-device,drive=hd0 -netdev tap,ifname=tap0,script=no,id=net0 -device virtio-net-device,netdev=net0
+# login as root without password
 ```
 
 Additional information is available on [FreeBSD Wiki](http://wiki.freebsd.org/riscv).
