@@ -21,13 +21,13 @@ cd $HOME/riscv
 sudo pkg install opensbi
 ````
 
-#### Install zstd utility to decompress FreeBSD riscv image
+#### Install zstd utility to decompress FreeBSD/RISC-V image
 
 ```
 sudo pkg install zstd
 ```
 
-#### Download FreeBSD riscv Snapshot and kernel
+#### Download FreeBSD/RISC-V Snapshot and kernel
 
 ```
 fetch https://artifact.ci.freebsd.org/snapshot/head/latest/riscv/riscv64/disk-test.img.zst
@@ -60,7 +60,7 @@ ifconfig bridge0 create up
 ifconfig bridge0 addm em0 addm tap0 # em0 might depends of your ethernet devices
 ```
 
-#### Run FreeBSD RiscV in QEMU
+#### Run FreeBSD/RISC-V in QEMU
 
 ```
 sudo qemu-system-riscv64 -machine virt -m 2048M -smp 2 -nographic -kernel $HOME/riscv/kernel -bios /usr/local/share/opensbi/lp64/generic/firmware/fw_jump.elf -drive file=$HOME/riscv/riscv.img,format=raw,id=hd0 -device virtio-blk-device,drive=hd0 -netdev tap,ifname=tap0,script=no,id=net0 -device virtio-net-device,netdev=net0
@@ -86,21 +86,21 @@ export WITHOUT_FORMAT_EXTENSIONS=yes
 export DESTDIR=${HOME}/riscv/riscv-world
 ```
 
-### Build FreeBSD RiscV64
+### Build FreeBSD/RISC-V
 
 Get source from svn:
 ```
 svnlite co http://svn.freebsd.org/base/head ${HOME}/riscv/freebsd-riscv
 ```
 
-Build FreeBSD RiscV64
+Build FreeBSD/RISC-V
 ```
 cd ${HOME}/riscv/freebsd-riscv
 make -j4 TARGET_ARCH=riscv64 buildworld
 make -j4 TARGET_ARCH=riscv64 buildkernel
 ```
 
-Install FreeBSD RiscV64 into $DESTDIR
+Install FreeBSD/RISC-V into $DESTDIR
 ```
 make TARGET_ARCH=riscv64 -DNO_ROOT -DWITHOUT_TESTS DESTDIR=$DESTDIR installworld
 make TARGET_ARCH=riscv64 -DNO_ROOT -DWITHOUT_TESTS DESTDIR=$DESTDIR distribution 
@@ -125,7 +125,7 @@ makefs -D -f 1000000 -o version=2 -s 10g $HOME/riscv/riscv.img METALOG
 sudo pkg install opensbi
 ````
 
-### Run FreeBSD RiscV in QEMU
+### Run FreeBSD/RISC-V in QEMU
 
 ```
 sudo qemu-system-riscv64 -machine virt -m 2048M -smp 2 -nographic -kernel $HOME/riscv/kernel -bios /usr/local/share/opensbi/lp64/generic/firmware/fw_jump.elf -drive file=$HOME/riscv/riscv.img,format=raw,id=hd0 -device virtio-blk-device,drive=hd0 -netdev tap,ifname=tap0,script=no,id=net0 -device virtio-net-device,netdev=net0
