@@ -1,33 +1,39 @@
 # FreeBSD/RISC-V
-This is a port of [FreeBSD Operating System](http://www.freebsd.org) to RISC-V instruction set architecture.
+This is a port of the [FreeBSD Operating System](http://www.freebsd.org) to the RISC-V instruction set architecture.
 
 [![Build Status](https://ci.freebsd.org/buildStatus/icon?job=FreeBSD-head-riscv64-build)](https://ci.freebsd.org/job/FreeBSD-head-riscv64-build/)
 
 
-## Quick way
+## Quick Start
 
-### You can use pre-built images, otherwise proceed to next step.
+**You can use pre-built images, otherwise proceed to the next step.**
 
-#### Setup your path
+### Set up your path
 
 ```
 mkdir $HOME/riscv
 cd $HOME/riscv
 ```
 
-#### Install pre-built [OpenSBI](https://github.com/riscv/opensbi/) bootloaders
+### Install pre-built [OpenSBI](https://github.com/riscv/opensbi/) bootloaders
 
 ```
 sudo pkg install opensbi
 ````
 
-#### Install zstd utility to decompress FreeBSD/RISC-V image
+### Install `zstd` utility to decompress FreeBSD/RISC-V image
 
 ```
 sudo pkg install zstd
 ```
 
-#### Download FreeBSD/RISC-V Snapshot and kernel
+### Install QEMU emulator
+
+```
+sudo pkg install qemu-devel
+```
+
+### Download FreeBSD/RISC-V snapshot and kernel
 
 ```
 fetch https://artifact.ci.freebsd.org/snapshot/head/latest/riscv/riscv64/disk-test.img.zst
@@ -36,7 +42,7 @@ fetch https://artifact.ci.freebsd.org/snapshot/head/latest/riscv/riscv64/kernel.
 tar Jxvf kernel.txz --strip-components 3 boot/kernel/kernel
 ```
 
-#### Configure tap(4) 
+### Configure tap(4) 
 
 Load (tun)tap module(s) if not already loaded
 
@@ -60,7 +66,7 @@ ifconfig bridge0 create up
 ifconfig bridge0 addm em0 addm tap0 # em0 might depends of your ethernet devices
 ```
 
-#### Run FreeBSD/RISC-V in QEMU
+### Run FreeBSD/RISC-V in QEMU
 
 ```
 sudo qemu-system-riscv64 -machine virt -m 2048M -smp 2 -nographic -kernel $HOME/riscv/kernel -bios /usr/local/share/opensbi/lp64/generic/firmware/fw_jump.elf -drive file=$HOME/riscv/riscv.img,format=raw,id=hd0 -device virtio-blk-device,drive=hd0 -netdev tap,ifname=tap0,script=no,id=net0 -device virtio-net-device,netdev=net0
@@ -74,7 +80,6 @@ with (t)csh shell:
 
 ```
 setenv MAKEOBJDIRPREFIX ${HOME}/riscv/obj/
-setenv WITHOUT_FORMAT_EXTENSIONS yes
 setenv DESTDIR ${HOME}/riscv/riscv-world
 ```
 
@@ -82,7 +87,6 @@ with bash/zsh/etc. shell:
 
 ```
 export MAKEOBJDIRPREFIX=${HOME}/riscv/obj/
-export WITHOUT_FORMAT_EXTENSIONS=yes
 export DESTDIR=${HOME}/riscv/riscv-world
 ```
 
@@ -124,6 +128,12 @@ makefs -D -f 1000000 -o version=2 -s 10g $HOME/riscv/riscv.img METALOG
 ```
 sudo pkg install opensbi
 ````
+
+### Install QEMU emulator
+
+```
+sudo pkg install qemu-devel
+```
 
 ### Run FreeBSD/RISC-V in QEMU
 
