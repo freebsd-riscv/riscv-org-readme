@@ -23,6 +23,8 @@ sudo pkg install opensbi
 
 ### Install `zstd` utility to decompress FreeBSD/RISC-V image
 
+This step can be skipped on FreeBSD >= 12.
+
 ```
 sudo pkg install zstd
 ```
@@ -94,14 +96,14 @@ export DESTDIR=${HOME}/riscv/riscv-world
 
 Get source from svn:
 ```
-svnlite co http://svn.freebsd.org/base/head ${HOME}/riscv/freebsd-riscv
+svnlite co https://svn.freebsd.org/base/head ${HOME}/riscv/freebsd-riscv
 ```
 
 Build FreeBSD/RISC-V
 ```
 cd ${HOME}/riscv/freebsd-riscv
-make -j4 TARGET_ARCH=riscv64 buildworld
-make -j4 TARGET_ARCH=riscv64 buildkernel
+make -j`sysctl -n kern.smp.cpus` TARGET_ARCH=riscv64 buildworld
+make -j`sysctl -n kern.smp.cpus` TARGET_ARCH=riscv64 buildkernel
 ```
 
 Install FreeBSD/RISC-V into $DESTDIR
@@ -120,7 +122,7 @@ echo 'hostname="qemu"' > etc/rc.conf
 echo "/dev/vtbd0        /       ufs     rw      1       1" > etc/fstab
 echo "./etc/fstab type=file uname=root gname=wheel mode=0644" >> METALOG
 echo "./etc/rc.conf type=file uname=root gname=wheel mode=0644" >> METALOG
-makefs -D -f 1000000 -o version=2 -s 10g $HOME/riscv/riscv.img METALOG
+makefs -Z -D -f 1000000 -o version=2 -s 10g $HOME/riscv/riscv.img METALOG
 ```
 
 ### Install pre-built [OpenSBI](https://github.com/riscv/opensbi/) bootloaders
@@ -142,4 +144,4 @@ sudo qemu-system-riscv64 -machine virt -m 2048M -smp 2 -nographic -kernel $HOME/
 # login as root without password
 ```
 
-Additional information is available on [FreeBSD Wiki](http://wiki.freebsd.org/riscv).
+Additional information is available on [FreeBSD Wiki](https://wiki.freebsd.org/riscv).
